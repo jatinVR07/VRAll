@@ -1,0 +1,352 @@
+<html>
+<head>
+
+	<meta http-equiv='cache-control' content='no-cache'>
+	<meta http-equiv='expires' content='0'>
+	<meta http-equiv='pragma' content='no-cache'>
+	<meta http-equiv="Pragma" content="no-cache" />
+	<meta http-equiv="Expires" content="-1" />
+	<meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width, shrink-to-fit=no">
+	<style>
+    html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #000;
+      }
+
+	#progressId {
+        width: 0;
+        height: 5px;
+        position: fixed;
+        top: 0;
+        background: #fff;
+        -webkit-transition: opacity 0.5s ease;
+        transition: opacity 0.5s ease;
+      }
+
+    #progressId.finish {
+        opacity: 0;
+    }
+	
+	.centerDiv{
+		#background:url(Logo/shipdeck.jpg) no-repeat 20% 30%;
+		background-size: cover;
+		background:white;
+	}
+	
+	.LinkImage{
+		cursor:pointer;
+		position:absolute;
+		width: 10%;
+		height: 5%;
+		display:none;
+	}
+	
+    </style>
+	<script src='./js/jquery.min.js'></script>
+	<script src='./js/three.min.js'></script>
+	<script src='./js/panolens.js?n=1'></script>
+	<script src='./js/main.js'></script>
+	<script src='./js/data.js'></script>
+	<script src='./js/NoSleep.js'></script>
+</head>
+<body onload="docOnload()" >
+
+<!-- .LinkImage:hover{
+		width: 14%;
+		height: 6%;
+	} -->
+<img src="Logo/RotatePhone.png" id="RotatePhoneImg" style="width: 100%;height: 100%;position:absolute;top:0px;left:0px;z-index:100;display:none;"> 
+
+<div id="centerDivId" class="centerDiv" style="position:absolute;top:0px;left:0px;width:100%;height:100%;z-index:1">
+
+	<div onclick="LinkPano(1)"  align="center" class="" style="width:100%;height:100%;position:absolute;top:0px;left:0px;" >
+		 <img src="Logo.png" style="width: 40%;position:absolute;top:40%;left:30%;cursor:pointer;box-shadow:2px 2px 15px 1px rgba(0,0,0,0.29)"> 
+	</div>
+
+</div>
+
+
+
+<!-- <div id="progress" style="width: 100%;z-index:1000;" class="finish"></div> -->
+<label id="LoadingLabelId" style="position:absolute;display:none;top:40%;left:30%;font-size:40px;color:#eeeeee;z-index:1;">Loading page, Please wait...</label>
+<audio id="myAudio">
+	<source id="audioSource" type="audio/mpeg"/>
+</audio>
+
+<script>
+
+	var noSleep = new NoSleep();
+	  
+	var loadingLabel = document.getElementById('LoadingLabelId');
+	var progress;
+	var audio = document.getElementById('myAudio');
+	var source = document.getElementById('audioSource');
+	var viewer ;
+	var shipDeck;
+	var panoCounter = 0;
+	var currentPanoName = "";
+	var currentPanoObj;
+	var isHomePageActive = true;
+	var isHomePage = true;
+	var mobileOperatingSystem = "";
+	var isLoadingPanorama = false;
+	
+	var progressElement;
+	//progressElement = document.getElementById( 'progress' );
+	
+	function LinkPano(infoPointName)
+	{
+		currentPanoName = infoPointName.toString();
+		isHomePage = false;
+		isHomePageActive = false;
+		shipDeck.LoadImagePanorama(infoPointName);
+		if(mobileOperatingSystem != "unknown")
+		{
+			shipDeck.viewer.enableControl(1);		
+		}
+		findPanoImageFromCounter();
+		if(mobileOperatingSystem == "iOS")
+		{
+			PlayAudio(currentPanoName);
+		}
+	}
+	
+	function EnableDisableHomeScreen()
+	{
+		if(isHomePageActive == false)
+		{
+			$("#centerDivId").css("display","none");
+			if(mobileOperatingSystem != "iOS")
+			{
+				shipDeck.viewer.widget.EnableDisableFullScreen();
+			}
+			isHomePageActive = true;
+		}
+		if(mobileOperatingSystem != "iOS")
+		{
+			PlayAudio(currentPanoName);
+		}
+	}
+	
+
+	function PrevClickFunction()
+	{
+		findPanoImageFromCounter();
+		panoCounter--;
+		if(panoCounter < 0)
+		{
+			panoCounter = 0;
+		}
+		else
+		{
+			SetPanoToView();
+		}
+	}
+	
+	function NextClickFunction()
+	{
+		findPanoImageFromCounter();
+		panoCounter++;
+		if(panoCounter > (shipDeck.PanoList.length - 1))
+		{	
+			panoCounter = shipDeck.PanoList.length - 1;
+		}
+		else
+		{
+			SetPanoToView();
+		}
+	}
+	
+	function SetPanoToView()
+	{
+		currentPanoName = shipDeck.PanoList[panoCounter];
+		shipDeck.LoadImagePanorama(currentPanoName);
+		isLoadingPanorama = false;
+	}
+	
+	function findPanoImageFromCounter()
+	{
+		panoCounter = shipDeck.PanoList.indexOf(currentPanoName);
+	}
+	
+	function HomeButtonClick()
+	{
+		isHomePage = true;
+		isHomePageActive = true;
+		if(mobileOperatingSystem != "iOS" && isFullscreen == true)
+		{
+			shipDeck.viewer.widget.EnableDisableFullScreen();
+		}
+		audio.pause();
+		$("#centerDivId").fadeIn();
+	}
+	
+	var LoadedPanoramas = [];
+
+    function onEnter ( event ) {
+        progressElement.style.width = 0;
+        progressElement.classList.remove( 'finish' );
+		//console.log("-------onEnter--------");
+	}
+	
+	function PlayAudio(audioName)
+	{
+		/*try{
+		  if (audio.canPlayType("audio/mpeg")) {
+				audio.pause();
+				if(audioFileList.includes(parseInt(audioName)))
+				{
+					audio.setAttribute("src","Audio/"+audioName+".mp3");
+					setTimeout(function(){
+						if(!isHomePage)
+						{
+							audio.play(); 
+						}
+					}, 2000);
+				}
+				else
+				{
+					//console.info("No audio found");
+				}
+			}
+		}
+		catch(e)
+		{
+			console.info("Error : "+e)
+		}*/
+	}
+
+    function onProgress ( event ) {
+        progress = event.progress.loaded / event.progress.total * 100;
+        progressElement.style.width = progress + '%';
+        if ( progress === 100 ) {
+            progressElement.classList.add( 'finish' );
+			//console.log("-------process done--------");
+        }
+    }
+	
+	function checkWindowSize()
+	{
+		if($(window).width() < 500)
+		{
+			$("#RotatePhoneImg").css("display","block");
+			$(".LinkImage").css("display","none");
+			$(".link1").css("width","35%").css("left","52%").css("top","40%");
+			$(".link2").css("width","32%").css("left","55%").css("top","52%");
+			$(".link3").css("width","29%").css("left","48%").css("top","62%");
+			$(".link4").css("width","38%").css("left","57%").css("top","71%");
+			$(".link5").css("width","29%").css("top","76%");
+			$(".link6").css("width","35%").css("top","26%").css("left","32%");
+		}
+		else
+		{
+			$("#RotatePhoneImg").css("display","none");
+			$(".LinkImage").css("display","block");
+			if(mobileOperatingSystem == "Android")
+			{
+				$(".link1").css("width","10%").css("left","29%").css("top","47%");
+				$(".link2").css("width","9%").css("left","32%").css("top","59%");
+				$(".link3").css("width","8%").css("left","29%").css("top","69%");
+				$(".link4").css("width","11%").css("left","32%").css("top","78%");
+				$(".link5").css("width","8%").css("top","83%");
+				$(".link6").css("width","7%").css("top","44%").css("left","45%");
+			}
+			else
+			{
+				$(".link1").css("width","10%").css("left","29%");
+				$(".link2").css("width","9%").css("left","32%");
+				$(".link3").css("width","8%").css("left","29%");
+				$(".link4").css("width","11%").css("left","32%");
+				$(".link5").css("width","8%");
+				$(".link6").css("width","7%").css("top","52%").css("left","48%");
+			}
+		}
+	}
+
+	function docOnload()
+	{
+		mobileOperatingSystem = getMobileOperatingSystem();
+		try{
+			shipDeck = new ShipDeck();
+			shipDeck.initialize(dataJson);
+		}
+		catch(e)
+		{
+			console.info("-----------errrr found-------docOnload-------");
+			console.info(e);
+		}
+		
+		
+		checkWindowSize();
+		$( window ).resize(function() {
+		  checkWindowSize();
+		});
+		
+		document.addEventListener('click', function enableNoSleep() {
+			try
+			{
+				document.removeEventListener('click', enableNoSleep, false);
+				noSleep.enable();
+			}
+			catch(e)
+			{
+				console.info("-----------errrr found-------noSleep-------");
+				console.info(e);
+			}
+			
+		}, false);
+	}
+	
+	function ClickToNextPanoImage(pano)
+	{
+		currentPanoName = pano.name;
+		currentPanoObj = pano;
+		//PlayAudio(pano.name);
+	}
+	
+	function getMobileOperatingSystem() {
+	  var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+		  // Windows Phone must come first because its UA also contains "Android"
+		if (/windows phone/i.test(userAgent)) {
+			return "Windows Phone";
+		}
+
+		if (/android/i.test(userAgent)) {
+			return "Android";
+		}
+
+		// iOS detection from: http://stackoverflow.com/a/9039885/177710
+		if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+			return "iOS";
+		}
+
+		return "unknown";
+	}
+	
+	function requestOrientation()
+	{
+		if (typeof DeviceMotionEvent.requestPermission === 'function') {
+	    DeviceMotionEvent.requestPermission()
+		.then(response => {
+		  if (response == 'granted') {
+			window.addEventListener('devicemotion', (e) => {
+			  // do something with e
+			})
+		  }
+		})
+		.catch(console.error)
+		} else {
+		  // non iOS 13+
+		}
+	}
+	
+	
+	
+	
+</script>
+</body>
+</html>
